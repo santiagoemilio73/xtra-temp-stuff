@@ -1,0 +1,58 @@
+from launch import LaunchDescription
+from launch.actions import ExecuteProcess
+from launch_ros.actions import Node
+import os
+
+
+def generate_launch_description():
+    calibration = (
+        "/opt/ros/jazzy/share/velodyne_pointcloud/params/VLP16db.yaml"
+    )
+
+    if not os.path.isfile(calibration):
+        raise RuntimeError(
+            f"VLP-16 calibration file not found: {calibration}"
+        )
+
+    driver = Node(
+        package="velodyne_driver",
+        executable="velodyne_driver_node",
+        name="velodyne_driver_node",
+        output="screen",
+        parameters=[{
+            "device_ip": "192.168.1.201",
+            "model": "VLP16",
+            "port": 2368,
+            "rpm": 600.0,
+            "frame_id": "velodyne",
+            "gps_time": False,
+            "enabled": True,
+        }],
+    )
+
+    converter = Node(
+        package="velodyne_pointcloud",
+        executable="velodyne_convert_node",
+        name="velodyne_convert_node",
+        output="screen",
+        parameters=[{
+            "calibration": calibration,
+            "model": "VLP16",
+            "min_range": 0.5,
+            "max_range": 30.0,
+            "view_direction": 0.0,
+            "view_width": 6.283185307179586,
+            "organize_cloud": False,
+        }],
+    )
+
+    viewer = ExecuteProcess(
+        cmd=["python3", "/root/lidar_project/lidar_real_viewer.py"],
+        output="screen",
+    )
+
+    return LaunchDescription([
+        driver,
+        converter,
+        viewer,
+    ])
